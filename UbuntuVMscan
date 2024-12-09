@@ -1,0 +1,43 @@
+import socket
+from datetime import datetime
+
+def log_with_timestamp(message):
+    print(f"{datetime.now()} - {message}")
+
+def scan_ports(target, ports):
+    log_with_timestamp(f"Starting scan on target: {target}")
+    
+    try:
+        target_ip = socket.gethostbyname(target)
+        log_with_timestamp(f"Resolved IP address: {target_ip}")
+    except socket.gaierror as e:
+        log_with_timestamp(f"Error resolving target: {e}")
+        return
+
+    start_time = datetime.now()
+
+    open_ports = []
+    for port in ports:
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(1)
+                result = s.connect_ex((target_ip, port))
+                if result == 0:
+                    log_with_timestamp(f"Port {port} is open.")
+                    open_ports.append(port)
+                else:
+                    log_with_timestamp(f"Port {port} is closed.")
+        except Exception as e:
+            log_with_timestamp(f"Error scanning port {port}: {e}")
+
+    end_time = datetime.now()
+    duration = end_time - start_time
+
+    log_with_timestamp(f"Scan completed in {duration.total_seconds()} seconds.")
+    log_with_timestamp(f"Open ports: {open_ports if open_ports else 'None found'}")
+
+if __name__ == "__main__":
+    TARGET = "192.168.254.63"
+    PORTS = range(1, 1025)
+
+    scan_ports(TARGET, PORTS)
