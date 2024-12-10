@@ -1,43 +1,76 @@
-import socket
-from datetime import datetime
+import socket  # Import the socket module for network communication
+from datetime import datetime  # Import for logging with timestamps
 
 def log_with_timestamp(message):
-    print(f"{datetime.now()} - {message}")
+    """
+    Logs a message with a timestamp to both the console and a file.
+    Args:
+        message (str): The message to log.
+    """
+    # Format the message with a timestamp
+    timestamped_message = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {message}"
+    
+    # Print the log message to the console
+    print(timestamped_message)
+    
+    # Save the log message to a file (file: port_scanner_logs.txt in the script directory)
+    with open("port_scanner_logs.txt", "a") as log_file:  # Opens the log file in append mode
+        log_file.write(timestamped_message + "\n")  # Writes the log message with a newline
 
 def scan_ports(target, ports):
+    """
+    Scans a range of ports on a target system and identifies open ones.
+
+    Args:
+        target (str): The target hostname or IP address.
+        ports (range): The range of ports to scan.
+    """
+    # Log the start of the scan
     log_with_timestamp(f"Starting scan on target: {target}")
-    
+
+    # Resolve the target hostname to an IP address
     try:
-        target_ip = socket.gethostbyname(target)
+        target_ip = socket.gethostbyname(target)  # Get the IP address of the target
         log_with_timestamp(f"Resolved IP address: {target_ip}")
     except socket.gaierror as e:
         log_with_timestamp(f"Error resolving target: {e}")
-        return
+        return  # Stop scanning if the target cannot be resolved
 
+    # Record the start time for performance measurement
     start_time = datetime.now()
 
+    # List to store open ports
     open_ports = []
+
+    # Iterate through the range of ports to scan each one
     for port in ports:
         try:
+            # Create a socket object for communication
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.settimeout(1)
-                result = s.connect_ex((target_ip, port))
-                if result == 0:
-                    log_with_timestamp(f"Port {port} is open.")
-                    open_ports.append(port)
-                else:
-                    log_with_timestamp(f"Port {port} is closed.")
-        except Exception as e:
-            log_with_timestamp(f"Error scanning port {port}: {e}")
+                s.settimeout(1)  # Set a timeout to avoid hanging on unresponsive ports
+                result = s.connect_ex((target_ip, port))  # Attempt to connect to the port
 
+                # If the result is 0, the port is open
+                if result == 0:
+                    log_with_timestamp(f"Port {port} is open.")  # Log open port
+                    open_ports.append(port)  # Add to the list of open ports
+                else:
+                    log_with_timestamp(f"Port {port} is closed.")  # Log closed port
+        except Exception as e:
+            log_with_timestamp(f"Error scanning port {port}: {e}")  # Log any scanning errors
+
+    # Record the end time to measure how long the scan took
     end_time = datetime.now()
     duration = end_time - start_time
 
+    # Log the scan results
     log_with_timestamp(f"Scan completed in {duration.total_seconds()} seconds.")
     log_with_timestamp(f"Open ports: {open_ports if open_ports else 'None found'}")
 
 if __name__ == "__main__":
-    TARGET = "192.168.254.63"
-    PORTS = range(1, 1025)
+    # Define the target and the range of ports to scan
+    TARGET = "192.168.254.63"  # Target IP address
+    PORTS = range(1, 1025)  # Scanning ports 1 to 1024 (well-known ports)
 
+    # Start the port scanning process
     scan_ports(TARGET, PORTS)
