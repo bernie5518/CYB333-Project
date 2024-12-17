@@ -1,0 +1,23 @@
+[2024-12-17 15:49:13,368] - 
+[+] Scanning Ports...
+[2024-12-17 15:49:13,382] - Port 22: OPEN
+[2024-12-17 15:49:13,383] - Port 80: OPEN
+[2024-12-17 15:49:13,383] - Port 443: OPEN
+[2024-12-17 15:49:14,373] - 
+[+] Open Ports: [22, 80, 443]
+[2024-12-17 15:49:14,373] - 
+[+] Testing for SQL Injection...
+[2024-12-17 15:49:14,617] - No SQL Injection vulnerabilities detected.
+[2024-12-17 15:49:14,619] - 
+[+] Testing for Cross-Site Scripting (XSS)...
+[2024-12-17 15:49:14,845] - No XSS vulnerabilities detected.
+[2024-12-17 15:49:14,847] - 
+[+] Checking HTTP Security Headers...
+[2024-12-17 15:49:14,924] - All important security headers are present.
+[2024-12-17 15:49:14,925] - 
+[+] Enumerating Common Directories...
+[2024-12-17 15:49:15,375] - 
+[+] Checking SSL/TLS Certificate...
+[2024-12-17 15:49:15,454] - SSL/TLS certificate is valid.
+[2024-12-17 15:49:15,454] - 
+[+] Scan completed successfully. Results saved to results.txt.
