@@ -1,172 +1,43 @@
 import socket
-import requests
-import urllib3
-import logging
-from concurrent.futures import ThreadPoolExecutor
-from urllib.parse import urljoin
 from datetime import datetime
 
-# Disable SSL warnings for self-signed certificates
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-# Global constants
-DEFAULT_PORTS = [21, 22, 23, 25, 53, 80, 110, 443, 3306, 8080]
-COMMON_DIRS = ["admin", "login", "robots.txt", "config", "uploads", "backup"]
-REQUEST_TIMEOUT = 5  # Timeout for HTTP requests
-THREAD_POOL_SIZE = 10  # Number of threads for port scanning
-RESULT_FILE = "results.txt"  # File to save the results
-
-# Set up logging to both console and file
-logging.basicConfig(
-    level=logging.INFO,
-    format="[%(asctime)s] - %(message)s",
-    handlers=[
-        logging.FileHandler(RESULT_FILE, mode='w'),  # Save logs to file (overwrite on each run)
-        logging.StreamHandler()  # Output logs to console
-    ]
-)
-
 def log_with_timestamp(message):
-    """Logs a message with timestamp to both file and console."""
-    logging.info(message)
+    print(f"{datetime.now()} - {message}")
 
-def scan_port(target_ip, port):
-    """Scans a single port to check if it is open."""
+def scan_ports(target, ports):
+    log_with_timestamp(f"Starting scan on target: {target}")
+    
     try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(1)
-            if s.connect_ex((target_ip, port)) == 0:
-                log_with_timestamp(f"Port {port}: OPEN")
-                return port
-    except socket.error as e:
-        log_with_timestamp(f"Error scanning port {port}: {e}")
-    return None
+        target_ip = socket.gethostbyname(target)
+        log_with_timestamp(f"Resolved IP address: {target_ip}")
+    except socket.gaierror as e:
+        log_with_timestamp(f"Error resolving target: {e}")
+        return
 
-def scan_ports(target_ip):
-    """Scans a list of common ports using multi-threading."""
-    log_with_timestamp("\n[+] Scanning Ports...")
+    start_time = datetime.now()
+
     open_ports = []
-
-    with ThreadPoolExecutor(max_workers=THREAD_POOL_SIZE) as executor:
-        results = executor.map(lambda p: scan_port(target_ip, p), DEFAULT_PORTS)
-
-    for port in results:
-        if port:
-            open_ports.append(port)
-
-    log_with_timestamp(f"\n[+] Open Ports: {open_ports}")
-
-def test_sql_injection(url):
-    """Tests for SQL Injection vulnerabilities using predefined payloads."""
-    log_with_timestamp("\n[+] Testing for SQL Injection...")
-    payloads = ["' OR '1'='1", "'; DROP TABLE users; --", "' OR 1=1 --"]
-
-    for payload in payloads:
-        test_url = f"{url}?id={payload}"
+    for port in ports:
         try:
-            response = requests.get(test_url, verify=False, timeout=REQUEST_TIMEOUT)
-            if "error" in response.text.lower() or "mysql" in response.text.lower():
-                log_with_timestamp(f"Potential SQL Injection detected with payload: {payload}")
-                return
-        except requests.RequestException as e:
-            log_with_timestamp(f"Error testing SQL Injection: {e}")
-    log_with_timestamp("No SQL Injection vulnerabilities detected.")
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(1)
+                result = s.connect_ex((target_ip, port))
+                if result == 0:
+                    log_with_timestamp(f"Port {port} is open.")
+                    open_ports.append(port)
+                else:
+                    log_with_timestamp(f"Port {port} is closed.")
+        except Exception as e:
+            log_with_timestamp(f"Error scanning port {port}: {e}")
 
-def test_xss(url):
-    """Tests for XSS vulnerabilities using common payloads."""
-    log_with_timestamp("\n[+] Testing for Cross-Site Scripting (XSS)...")
-    payloads = [
-        "<script>alert('XSS')</script>",
-        "<img src=x onerror=alert('XSS')>",
-        "<svg onload=alert('XSS')>"
-    ]
+    end_time = datetime.now()
+    duration = end_time - start_time
 
-    for payload in payloads:
-        test_url = f"{url}?q={payload}"
-        try:
-            response = requests.get(test_url, verify=False, timeout=REQUEST_TIMEOUT)
-            if payload in response.text:
-                log_with_timestamp(f"Potential XSS detected with payload: {payload}")
-                return
-        except requests.RequestException as e:
-            log_with_timestamp(f"Error testing XSS: {e}")
-    log_with_timestamp("No XSS vulnerabilities detected.")
-
-def check_headers(url):
-    """Checks for missing security headers in the HTTP response."""
-    log_with_timestamp("\n[+] Checking HTTP Security Headers...")
-    try:
-        response = requests.get(url, verify=False, timeout=REQUEST_TIMEOUT)
-        headers = response.headers
-
-        missing_headers = []
-        if "Content-Security-Policy" not in headers:
-            missing_headers.append("Content-Security-Policy")
-        if "X-Frame-Options" not in headers:
-            missing_headers.append("X-Frame-Options")
-        if "Strict-Transport-Security" not in headers:
-            missing_headers.append("Strict-Transport-Security")
-
-        if missing_headers:
-            log_with_timestamp(f"Missing headers: {', '.join(missing_headers)}")
-        else:
-            log_with_timestamp("All important security headers are present.")
-    except requests.RequestException as e:
-        log_with_timestamp(f"Error checking headers: {e}")
-
-def enumerate_directories(url):
-    """Attempts to find common directories on the server."""
-    log_with_timestamp("\n[+] Enumerating Common Directories...")
-    for dir_name in COMMON_DIRS:
-        test_url = urljoin(url, dir_name)
-        try:
-            response = requests.get(test_url, verify=False, timeout=REQUEST_TIMEOUT)
-            if response.status_code == 200:
-                log_with_timestamp(f"Found: {test_url} (Status: {response.status_code})")
-        except requests.RequestException:
-            pass
-
-def check_ssl_certificate(url):
-    """Validates the SSL/TLS certificate for HTTPS."""
-    log_with_timestamp("\n[+] Checking SSL/TLS Certificate...")
-    try:
-        # Attempt with SSL verification enabled
-        requests.get(url, verify=False, timeout=REQUEST_TIMEOUT)
-        log_with_timestamp("SSL/TLS certificate is valid.")
-    except requests.exceptions.SSLError as e:
-        log_with_timestamp(f"SSL Error: {e}. Rechecking with verification disabled...")
-        try:
-            # Retry with verification disabled
-            requests.get(url, verify=False, timeout=REQUEST_TIMEOUT)
-            log_with_timestamp("SSL/TLS certificate is self-signed but accessible.")
-        except Exception as re:
-            log_with_timestamp(f"Error accessing SSL certificate: {re}")
-
-
-def main():
-    """Main function to run the vulnerability scanner."""
-    try:
-        target_ip = input("Enter the target IP address or domain: ").strip()
-        target_url = input("Enter the full URL of the web application: ").strip()
-
-        if not target_ip or not target_url:
-            log_with_timestamp("Error: Target IP and URL are required.")
-            return
-
-        scan_ports(target_ip)
-        test_sql_injection(target_url)
-        test_xss(target_url)
-        check_headers(target_url)
-        enumerate_directories(target_url)
-
-        if target_url.startswith("https"):
-            check_ssl_certificate(target_url)
-
-        log_with_timestamp("\n[+] Scan completed successfully. Results saved to results.txt.")
-    except KeyboardInterrupt:
-        log_with_timestamp("\n[!] Scan interrupted by the user.")
-    except Exception as e:
-        log_with_timestamp(f"Unexpected error occurred: {e}")
+    log_with_timestamp(f"Scan completed in {duration.total_seconds()} seconds.")
+    log_with_timestamp(f"Open ports: {open_ports if open_ports else 'None found'}")
 
 if __name__ == "__main__":
-    main()
+    TARGET = "192.168.254.63"
+    PORTS = range(1, 1025)
+
+    scan_ports(TARGET, PORTS)
