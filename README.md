@@ -13,31 +13,6 @@ A Python-based lightweight vulnerability scanner for identifying basic security 
 
 ---
 
-## Prerequisites
-- **Python 3.7+**
-- **pip** (Python package manager)
-- Self-signed certificate for SSL validation (optional)
-
----
-
-## Setup and Installation
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/vulnerability-scanner.git
-   cd vulnerability-scanner
-   
-2. Install dependancies
-   ```bash
-   pip install requests urllib3
-
-3. (Optional) Export self-signed certificates:
-    ```bash
-    echo | openssl s_client -connect <TARGET_IP>:443 -showcerts > server_cert.crt
-    sudo mv server_cert.crt /etc/ssl/certs/server_cert.crt
-    sudo chmod 644 /etc/ssl/certs/server_cert.crt
-
----
-  
 How to Run
 
 1. Run the script:
